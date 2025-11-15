@@ -1,0 +1,161 @@
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import axiosInstance from "../../utils/axios";
+import { TbCurrencyRupee } from "react-icons/tb";
+
+function SignUp() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match!");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await axiosInstance.post("/auth/register", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Store token and user data
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+
+      toast.success("Account created successfully!");
+      navigate("/dashboard");
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || "Registration failed";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8">
+        {/* Logo/Header */}
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <TbCurrencyRupee className="text-4xl sm:text-5xl text-purple-600" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              Expense Tracker
+            </h1>
+          </div>
+          <p className="text-gray-600 text-sm sm:text-base">
+            Create your account
+          </p>
+        </div>
+
+        {/* Sign Up Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
+              Full Name
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+              placeholder="John Doe"
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
+              Email Address
+            </label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+              placeholder="your@email.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              required
+              value={formData.confirmPassword}
+              onChange={(e) =>
+                setFormData({ ...formData, confirmPassword: e.target.value })
+              }
+              className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2.5 sm:py-3 rounded-lg font-semibold transition-colors text-sm sm:text-base mt-6"
+          >
+            {loading ? "Creating account..." : "Sign Up"}
+          </button>
+        </form>
+
+        {/* Login Link */}
+        <div className="mt-6 text-center">
+          <p className="text-gray-600 text-sm sm:text-base">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="text-purple-600 hover:text-purple-700 font-semibold"
+            >
+              Sign In
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default SignUp;
