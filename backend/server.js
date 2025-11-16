@@ -20,16 +20,53 @@ const MONGODB_URI =
 app.use(cors());
 app.use(bodyParser.json());
 
-// MongoDB Connection
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-    initializeData();
-  })
-  .catch((error) => {
+// MongoDB Connection with better error handling and options
+const connectDB = async () => {
+  try {
+    // Add connection options for better reliability
+    const conn = await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      bufferCommands: false, // Disable mongoose buffering
+      bufferMaxEntries: 0, // Disable buffering of operations
+    });
+
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    await initializeData();
+  } catch (error) {
     console.error("MongoDB connection error:", error);
-  });
+    console.error(
+      "Please check your MongoDB connection string and ensure MongoDB is running"
+    );
+    console.error("Connection URI:", MONGODB_URI);
+
+    // Try to connect to local MongoDB as fallback
+    if (MONGODB_URI.includes("mongodb+srv")) {
+      console.log("Trying to connect to local MongoDB as fallback...");
+      try {
+        const localConn = await mongoose.connect(
+          "mongodb://localhost:27017/expense-tracker",
+          {
+            serverSelectionTimeoutMS: 3000,
+            socketTimeoutMS: 45000,
+          }
+        );
+        console.log(`Fallback MongoDB Connected: ${localConn.connection.host}`);
+        await initializeData();
+      } catch (localError) {
+        console.error("Local MongoDB connection also failed:", localError);
+        console.error(
+          "Please ensure MongoDB is installed and running locally on port 27017"
+        );
+        // Exit process in production
+        // process.exit(1);
+      }
+    } else {
+      // Exit process in production
+      // process.exit(1);
+    }
+  }
+};
 
 // Initialize sample data if database is empty
 const initializeData = async () => {
@@ -71,6 +108,9 @@ const initializeData = async () => {
   }
 };
 
+// Connect to MongoDB
+connectDB();
+
 // ===== ROUTES =====
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -79,7 +119,30 @@ app.use("/api/summary", summaryRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", message: "Expense Tracker API is running" });
+  const dbStatus =
+    mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+  res.json({
+    status: "OK",
+    message: "Expense Tracker API is running",
+    database: dbStatus,
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({
+    error: "Internal server error",
+    details:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "An unexpected error occurred",
+  });
+});
+
+// 404 handler
+app.use("*", (req, res) => {
+  res.status(404).json({ error: "Route not found" });
 });
 
 // Start server

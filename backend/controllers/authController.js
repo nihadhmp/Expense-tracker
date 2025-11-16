@@ -57,7 +57,51 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.error("Register error:", error);
-    res.status(500).json({ error: "Server error during registration" });
+
+    // Handle MongoDB connection errors specifically
+    if (
+      error.name === "MongooseServerSelectionError" ||
+      error.name === "MongoNetworkError" ||
+      error.message.includes("buffering timed out")
+    ) {
+      return res.status(500).json({
+        error: "Database connection error",
+        details:
+          "Unable to connect to the database. Please try again later or contact support.",
+      });
+    }
+
+    // Provide more detailed error information
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        error: "Validation failed",
+        details: errors,
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        error: "Duplicate field value entered",
+        details: Object.keys(error.keyPattern),
+      });
+    }
+
+    // For MongoDB connection errors
+    if (error.name === "MongoError" || error.name === "MongoNetworkError") {
+      return res.status(500).json({
+        error: "Database connection error",
+        details: "Unable to connect to the database. Please try again later.",
+      });
+    }
+
+    res.status(500).json({
+      error: "Server error during registration",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal server error",
+    });
   }
 };
 
@@ -99,7 +143,35 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ error: "Server error during login" });
+
+    // Handle MongoDB connection errors specifically
+    if (
+      error.name === "MongooseServerSelectionError" ||
+      error.name === "MongoNetworkError" ||
+      error.message.includes("buffering timed out")
+    ) {
+      return res.status(500).json({
+        error: "Database connection error",
+        details:
+          "Unable to connect to the database. Please try again later or contact support.",
+      });
+    }
+
+    // For MongoDB connection errors
+    if (error.name === "MongoError" || error.name === "MongoNetworkError") {
+      return res.status(500).json({
+        error: "Database connection error",
+        details: "Unable to connect to the database. Please try again later.",
+      });
+    }
+
+    res.status(500).json({
+      error: "Server error during login",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal server error",
+    });
   }
 };
 
@@ -121,6 +193,34 @@ export const getCurrentUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Get user error:", error);
-    res.status(500).json({ error: "Server error" });
+
+    // Handle MongoDB connection errors specifically
+    if (
+      error.name === "MongooseServerSelectionError" ||
+      error.name === "MongoNetworkError" ||
+      error.message.includes("buffering timed out")
+    ) {
+      return res.status(500).json({
+        error: "Database connection error",
+        details:
+          "Unable to connect to the database. Please try again later or contact support.",
+      });
+    }
+
+    // For MongoDB connection errors
+    if (error.name === "MongoError" || error.name === "MongoNetworkError") {
+      return res.status(500).json({
+        error: "Database connection error",
+        details: "Unable to connect to the database. Please try again later.",
+      });
+    }
+
+    res.status(500).json({
+      error: "Server error",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal server error",
+    });
   }
 };

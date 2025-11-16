@@ -50,8 +50,21 @@ axiosInstance.interceptors.response.use(
           console.error("An error occurred:", data?.error || error.message);
       }
     } else if (error.request) {
-      // Request made but no response
+      // Request made but no response received
       console.error("Network error - no response received");
+      console.error("Request details:", error.request);
+
+      // Add more detailed network error information
+      if (!navigator.onLine) {
+        console.error("No internet connection");
+      } else {
+        console.error("Possible causes:");
+        console.error("- Backend server is not running");
+        console.error("- Backend server is running on a different port");
+        console.error("- Firewall is blocking the connection");
+        console.error("- MongoDB connection issue");
+        console.error("- CORS configuration issue");
+      }
     } else {
       // Something else happened
       console.error("Error:", error.message);

@@ -43,8 +43,38 @@ function SignUp() {
       toast.success("Account created successfully!");
       navigate("/dashboard");
     } catch (error) {
-      const errorMessage = error.response?.data?.error || "Registration failed";
-      toast.error(errorMessage);
+      // Enhanced error handling with detailed messages
+      let errorMessage = "Registration failed";
+      let errorDetails = "";
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+        if (error.response.data.details) {
+          errorDetails = Array.isArray(error.response.data.details)
+            ? error.response.data.details.join(", ")
+            : error.response.data.details;
+        }
+      } else if (error.request) {
+        errorMessage = "Network error - unable to connect to server";
+        errorDetails =
+          "Please check that:\n- The backend server is running (npm start in backend directory)\n- You're connected to the internet\n- No firewall is blocking the connection\n- MongoDB is accessible";
+
+        // Check if it's specifically a database connection issue
+        if (error.message && error.message.includes("timeout")) {
+          errorMessage = "Database connection error";
+          errorDetails =
+            "The application cannot connect to the database. Please ensure MongoDB is running and accessible.";
+        }
+      } else {
+        errorMessage = error.message || "An unexpected error occurred";
+      }
+
+      toast.error(
+        `${errorMessage}${errorDetails ? `\n\n${errorDetails}` : ""}`,
+        {
+          duration: 5000,
+        }
+      );
     } finally {
       setLoading(false);
     }
