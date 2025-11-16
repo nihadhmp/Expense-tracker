@@ -53,15 +53,20 @@ app.use(bodyParser.json());
 // MongoDB Connection with better error handling and options
 const connectDB = async () => {
   try {
+    console.log("Attempting to connect to MongoDB with URI:", MONGODB_URI);
+
     // Add connection options for better reliability
     // Removed unsupported options: bufferMaxEntries
     const conn = await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      serverSelectionTimeoutMS: 10000, // Increased timeout to 10s
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
       bufferCommands: false, // Disable mongoose buffering
+      maxPoolSize: 10, // Limit connection pool size
+      serverSelectionTryOnce: false, // Retry connection
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`Database Name: ${conn.connection.name}`);
     await initializeData();
   } catch (error) {
     console.error("MongoDB connection error:", error);
@@ -70,6 +75,23 @@ const connectDB = async () => {
     );
     console.error("Connection URI:", MONGODB_URI);
 
+    // More specific error handling
+    if (error.name === "MongooseServerSelectionError") {
+      console.error(
+        "Server selection error - check network connectivity and MongoDB Atlas IP whitelist"
+      );
+    } else if (error.name === "MongoNetworkError") {
+      console.error(
+        "Network error - check firewall settings and network connectivity"
+      );
+    } else if (error.name === "MongoParseError") {
+      console.error(
+        "URI parsing error - check MongoDB connection string format"
+      );
+    } else if (error.code === "ENOTFOUND") {
+      console.error("DNS lookup failed - check MongoDB host name");
+    }
+
     // Try to connect to local MongoDB as fallback
     if (MONGODB_URI.includes("mongodb+srv")) {
       console.log("Trying to connect to local MongoDB as fallback...");
@@ -77,11 +99,12 @@ const connectDB = async () => {
         const localConn = await mongoose.connect(
           "mongodb://localhost:27017/expense-tracker",
           {
-            serverSelectionTimeoutMS: 3000,
+            serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
           }
         );
         console.log(`Fallback MongoDB Connected: ${localConn.connection.host}`);
+        console.log(`Database Name: ${localConn.connection.name}`);
         await initializeData();
       } catch (localError) {
         console.error("Local MongoDB connection also failed:", localError);
@@ -132,6 +155,8 @@ const initializeData = async () => {
         },
       ]);
       console.log("Sample data initialized");
+    } else {
+      console.log(`Found ${categoryCount} existing categories in database`);
     }
   } catch (error) {
     console.error("Error initializing data:", error);
@@ -155,6 +180,7 @@ app.get("/api/health", (req, res) => {
     status: "OK",
     message: "Expense Tracker API is running",
     database: dbStatus,
+    timestamp: new Date().toISOString(),
   });
 });
 
