@@ -2,7 +2,9 @@ import axios from "axios";
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.BACKEND_API_URL || "http://localhost:5000/api",
+  baseURL:
+    import.meta.env.BACKEND_API_URL ||
+    "https://expense-tracker-va4s.onrender.com/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
