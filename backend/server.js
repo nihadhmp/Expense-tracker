@@ -22,12 +22,18 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
+    // List of allowed origins
     const allowedOrigins = [
       "http://localhost:5173",
-
-      process.env.FRONTEND_URL,
-      "https://expense-tracker-1-121h.onrender.com",
-    ].filter(Boolean);
+      "http://localhost:5174",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:5174",
+      "http://127.0.0.1:3000",
+      // Add your deployed frontend URL here
+      process.env.FRONTEND_URL, // This will be set in Render environment variables
+      "https://expense-tracker-1-121h.onrender.com", // Your deployed frontend URL
+    ].filter(Boolean); // Remove undefined values
 
     // Check if the origin is in the allowed list
     if (allowedOrigins.includes(origin)) {
@@ -48,11 +54,11 @@ app.use(bodyParser.json());
 const connectDB = async () => {
   try {
     // Add connection options for better reliability
+    // Removed unsupported options: bufferMaxEntries
     const conn = await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
       bufferCommands: false, // Disable mongoose buffering
-      bufferMaxEntries: 0, // Disable buffering of operations
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
