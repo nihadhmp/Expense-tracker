@@ -1,74 +1,179 @@
-// MongoDB Connection with better error handling and options
-const connectDB = async () => {
-  try {
-    console.log("Attempting to connect to MongoDB with URI:", MONGODB_URI);
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import { Category, Expense } from "./models.js";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import expenseRoutes from "./routes/expenseRoutes.js";
+import summaryRoutes from "./routes/summaryRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
-    // Add connection options for better reliability
-    // Using the method specified by the user
-    const conn = await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTryOnce: false,
-      serverSelectionTimeoutMS: 10000, // Increased timeout to 10s
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-      bufferCommands: false, // Disable mongoose buffering
-      maxPoolSize: 10, // Limit connection pool size
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// CORS Configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL, // Render frontend URL
+  "https://expense-tracker-1-121h.onrender.com",
+].filter(Boolean);
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+// Middleware
+app.use(cors(corsOptions));
+app.use(bodyParser.json());
+
+// =============================
+//   MONGO CONNECTION (CLEAN)
+// =============================
+
+const connectDB = async () => {
+  console.log("Attempting to connect to MongoDB:", MONGODB_URI);
+
+  try {
+    // No deprecated options, clean and modern
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 8000,
     });
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-    console.log(`Database Name: ${conn.connection.name}`);
+    console.log(`MongoDB Connected: ${mongoose.connection.host}`);
+    console.log(`Database Name: ${mongoose.connection.name}`);
+
     await initializeData();
+    return true;
   } catch (error) {
-    console.error("MongoDB connection error:", error);
-    console.error(
-      "Please check your MongoDB connection string and ensure MongoDB is running"
-    );
-    console.error("Connection URI:", MONGODB_URI);
+    console.error("MongoDB connection error:", error.message);
 
-    // More specific error handling
-    if (error.name === "MongooseServerSelectionError") {
+    // Detect & log parsing error separately
+    if (error.name === "MongoParseError") {
       console.error(
-        "Server selection error - check network connectivity and MongoDB Atlas IP whitelist"
+        "MongoDB URI format error. Please check your connection string."
       );
-    } else if (error.name === "MongoNetworkError") {
-      console.error(
-        "Network error - check firewall settings and network connectivity"
-      );
-    } else if (error.name === "MongoParseError") {
-      console.error(
-        "URI parsing error - check MongoDB connection string format"
-      );
-    } else if (error.code === "ENOTFOUND") {
-      console.error("DNS lookup failed - check MongoDB host name");
     }
 
-    // Try to connect to local MongoDB as fallback
+    // Fallback only if the URI is an Atlas URI
     if (MONGODB_URI.includes("mongodb+srv")) {
-      console.log("Trying to connect to local MongoDB as fallback...");
+      console.log("Trying local MongoDB fallback...");
+
       try {
-        const localConn = await mongoose.connect(
-          "mongodb://localhost:27017/expense-tracker",
-          {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 5000,
-            socketTimeoutMS: 45000,
-          }
-        );
-        console.log(`Fallback MongoDB Connected: ${localConn.connection.host}`);
-        console.log(`Database Name: ${localConn.connection.name}`);
+        await mongoose.connect("mongodb://127.0.0.1:27017/expense-tracker", {
+          serverSelectionTimeoutMS: 5000,
+        });
+
+        console.log("Fallback MongoDB Connected: localhost");
         await initializeData();
-      } catch (localError) {
-        console.error("Local MongoDB connection also failed:", localError);
-        console.error(
-          "Please ensure MongoDB is installed and running locally on port 27017"
-        );
-        // Exit process in production
-        // process.exit(1);
+        return true;
+      } catch (localErr) {
+        console.error("Local MongoDB connection failed:", localErr.message);
+        console.log("Starting server WITHOUT database connection...");
+        return false;
       }
-    } else {
-      // Exit process in production
-      // process.exit(1);
     }
+
+    return false;
   }
 };
+
+// =============================
+// INITIAL DATA
+// =============================
+const initializeData = async () => {
+  try {
+    const categoryCount = await Category.countDocuments();
+
+    if (categoryCount === 0) {
+      console.log("Initializing sample data...");
+
+      const categories = await Category.insertMany([
+        { name: "Food", monthlyBudget: 500, emoji: "🍔" },
+        { name: "Rent", monthlyBudget: 1200, emoji: "🏠" },
+        { name: "Transport", monthlyBudget: 200, emoji: "🚗" },
+        { name: "Entertainment", monthlyBudget: 150, emoji: "🎮" },
+      ]);
+
+      await Expense.insertMany([
+        {
+          categoryId: categories[0]._id,
+          amount: 45.5,
+          description: "Grocery shopping",
+          date: new Date("2025-11-01"),
+        },
+        {
+          categoryId: categories[0]._id,
+          amount: 25.0,
+          description: "Restaurant lunch",
+          date: new Date("2025-11-05"),
+        },
+        {
+          categoryId: categories[1]._id,
+          amount: 1200.0,
+          description: "Monthly rent",
+          date: new Date("2025-11-01"),
+        },
+      ]);
+
+      console.log("Sample data initialized");
+    } else {
+      console.log(`Existing categories found: ${categoryCount}`);
+    }
+  } catch (error) {
+    console.error("Error initializing data:", error);
+  }
+};
+
+// =============================
+// START SERVER
+// =============================
+connectDB().then((connected) => {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`API available at http://localhost:${PORT}/api`);
+
+    if (!connected) {
+      console.log("⚠ WARNING: Database is NOT connected!");
+    }
+  });
+});
+
+// =============================
+// ROUTES
+// =============================
+app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/expenses", expenseRoutes);
+app.use("/api/summary", summaryRoutes);
+
+// HEALTH CHECK
+app.get("/api/health", (req, res) => {
+  const dbStatus =
+    mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+
+  res.json({
+    status: "OK",
+    message: "Expense Tracker API is running",
+    database: dbStatus,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// 404
+app.use("*", (req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
