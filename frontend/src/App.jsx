@@ -14,10 +14,12 @@ import Categories from "./pages/Dashboard/Categories";
 import MonthlySummary from "./pages/Dashboard/Income";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
     <div>
+      {/* <TestToast /> */}
       <Router>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" />} />
@@ -50,6 +52,7 @@ function App() {
             <Route path="categories" element={<Categories />} />
             <Route path="summary" element={<MonthlySummary />} />
           </Route>
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </div>

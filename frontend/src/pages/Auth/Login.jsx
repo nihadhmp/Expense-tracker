@@ -35,7 +35,14 @@ function Login() {
 
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
-        if (error.response.data.details) {
+
+        // Handle specific case when user is not registered
+        if (error.response.data.error === "User not found") {
+          errorMessage = "Not Registered";
+          errorDetails =
+            error.response.data.message ||
+            "This email is not registered yet. Please sign up first.";
+        } else if (error.response.data.details) {
           errorDetails = Array.isArray(error.response.data.details)
             ? error.response.data.details.join(", ")
             : error.response.data.details;

@@ -1,0 +1,12 @@
+# Unwanted Files and Folders List
+
+## Folders that have been deleted:
+1. backend/node_modules - Can be reinstalled with 'npm install'
+2. frontend/node_modules - Can be reinstalled with 'npm install'
+3. .vscode - IDE-specific settings, not needed for others
+
+## Files that can be safely deleted:
+(None identified in this project)
+
+## Instructions:
+These folders have already been deleted. If you need to reinstall dependencies, run 'npm install' in both the backend and frontend directories.

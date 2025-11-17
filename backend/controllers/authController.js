@@ -120,7 +120,10 @@ export const login = async (req, res) => {
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({
+        error: "User not found",
+        message: "This email is not registered yet. Please sign up first.",
+      });
     }
 
     // Check password
