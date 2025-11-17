@@ -29,7 +29,7 @@ function Login() {
       toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error) {
-      // Enhanced error handling with detailed messages
+      toast.error("Login failed");
       let errorMessage = "Login failed";
       let errorDetails = "";
 
